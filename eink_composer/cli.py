@@ -81,18 +81,20 @@ Examples:
     add_img_cmd.add_argument('image_path', help='Path to image file')
     add_img_cmd.add_argument('--x', type=int, default=0, help='X position (default: 0)')
     add_img_cmd.add_argument('--y', type=int, default=0, help='Y position (default: 0)')
-    add_img_cmd.add_argument('--mode', choices=['stretch', 'fit', 'crop'], default='fit',
+    add_img_cmd.add_argument('--resize-mode', choices=['stretch', 'fit', 'crop'], default='fit',
                             help='Resize mode (default: fit)')
     add_img_cmd.add_argument('--dither', choices=['floyd-steinberg', 'threshold', 'none'],
                             default='floyd-steinberg', help='Dithering mode (default: floyd-steinberg)')
     add_img_cmd.add_argument('--brightness', type=float, default=1.0, help='Brightness (default: 1.0)')
     add_img_cmd.add_argument('--contrast', type=float, default=0.0, help='Contrast (default: 0.0)')
-    add_img_cmd.add_argument('--rotate', type=int, default=0, choices=[0, 90, 180, 270],
+    add_img_cmd.add_argument('--rotate', type=int, default=0,
                             help='Rotation in degrees (default: 0)')
     add_img_cmd.add_argument('--flip-h', action='store_true', help='Flip horizontally')
     add_img_cmd.add_argument('--flip-v', action='store_true', help='Flip vertically')
     add_img_cmd.add_argument('--crop-x', type=int, help='X position for crop (for crop mode)')
     add_img_cmd.add_argument('--crop-y', type=int, help='Y position for crop (for crop mode)')
+    add_img_cmd.add_argument('--width', type=int, help='Custom width for the image')
+    add_img_cmd.add_argument('--height', type=int, help='Custom height for the image')
     
     # Add text command
     add_txt_cmd = subparsers.add_parser('add-text', help='Add text layer')
@@ -102,6 +104,18 @@ Examples:
     add_txt_cmd.add_argument('--y', type=int, default=0, help='Y position (default: 0)')
     add_txt_cmd.add_argument('--color', type=int, default=0, choices=[0, 255],
                             help='Text color: 0=black, 255=white (default: 0)')
+    add_txt_cmd.add_argument('--rotate', type=int, default=0,
+                            help='Rotation in degrees (default: 0)')
+    add_txt_cmd.add_argument('--flip-h', action='store_true',
+                            help='Flip text horizontally')
+    add_txt_cmd.add_argument('--flip-v', action='store_true',
+                            help='Flip text vertically')
+    add_txt_cmd.add_argument('--font-size', type=int, default=1,
+                            help='Font scale factor: 1=normal, 2=double, etc. (default: 1)')
+    add_txt_cmd.add_argument('--background', action='store_true',
+                            help='Add white background behind text')
+    add_txt_cmd.add_argument('--padding', type=int, default=2,
+                            help='Padding around background in pixels (default: 2)')
     
     # Add rectangle command
     add_rect_cmd = subparsers.add_parser('add-rect', help='Add rectangle layer')
@@ -220,7 +234,16 @@ class ComposerSession:
                 x=layer_data['x'],
                 y=layer_data['y'],
                 resize_mode=layer_data.get('resize_mode', 'fit'),
-                dither_mode=layer_data.get('dither_mode', 'floyd-steinberg')
+                dither_mode=layer_data.get('dither_mode', 'floyd-steinberg'),
+                brightness=layer_data.get('brightness', 1.0),
+                contrast=layer_data.get('contrast', 0.0),
+                rotate=layer_data.get('rotate', 0),
+                flip_h=layer_data.get('flip_h', False),
+                flip_v=layer_data.get('flip_v', False),
+                crop_x=layer_data.get('crop_x', None),
+                crop_y=layer_data.get('crop_y', None),
+                width=layer_data.get('width', None),
+                height=layer_data.get('height', None)
             )
         elif layer_type == 'text':
             self.composer.add_text_layer(
@@ -228,7 +251,13 @@ class ComposerSession:
                 text=layer_data.get('text', ''),
                 x=layer_data['x'],
                 y=layer_data['y'],
-                color=layer_data.get('color', 0)
+                color=layer_data.get('color', 0),
+                rotate=layer_data.get('rotate', 0),
+                flip_h=layer_data.get('flip_h', False),
+                flip_v=layer_data.get('flip_v', False),
+                font_size=layer_data.get('font_size', 1),
+                background=layer_data.get('background', False),
+                padding=layer_data.get('padding', 2)
             )
         elif layer_type == 'rectangle':
             self.composer.add_rectangle_layer(
@@ -282,7 +311,7 @@ def main():
             layer_id=args.layer_id,
             image_path=args.image_path,
             x=args.x, y=args.y,
-            resize_mode=args.mode,
+            resize_mode=args.resize_mode,
             dither_mode=args.dither,
             brightness=args.brightness,
             contrast=args.contrast,
@@ -290,7 +319,9 @@ def main():
             flip_h=args.flip_h,
             flip_v=args.flip_v,
             crop_x=args.crop_x,
-            crop_y=args.crop_y
+            crop_y=args.crop_y,
+            width=args.width,
+            height=args.height
         )
         session.save_session()
         print(f"Added image layer '{args.layer_id}'")
@@ -304,7 +335,13 @@ def main():
             layer_id=args.layer_id,
             text=args.text,
             x=args.x, y=args.y,
-            color=args.color
+            color=args.color,
+            rotate=args.rotate,
+            flip_h=args.flip_h,
+            flip_v=args.flip_v,
+            font_size=args.font_size,
+            background=args.background,
+            padding=args.padding
         )
         session.save_session()
         print(f"Added text layer '{args.layer_id}'")

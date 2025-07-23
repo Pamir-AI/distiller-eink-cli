@@ -7,7 +7,7 @@ A Python library and CLI tool for creating layered image compositions optimized 
 - **Layer-based composition**: Add images, text, and shapes in layers
 - **Advanced dithering**: Floyd-Steinberg and threshold dithering for optimal e-ink display
 - **Image processing**: Resize (stretch/fit/crop), brightness/contrast adjustment, transformations
-- **Built-in text rendering**: 6x8 bitmap font for crisp text on e-ink
+- **Built-in text rendering**: Scalable 6x8 bitmap font with rotation, flipping, and background options
 - **Multiple output formats**: PNG, BMP, and binary (packed bits)
 - **CLI and Python API**: Use as command-line tool or Python library
 - **Hardware integration**: Direct display on Distiller CM5 e-ink hardware
@@ -105,14 +105,14 @@ composer = EinkComposer(128, 250)
 # Add background (white)
 composer.add_rectangle_layer("bg", width=128, height=250, filled=True, color=255)
 
-# Add title text
-composer.add_text_layer("title", "Weather Station", x=10, y=10)
+# Add title text with styling
+composer.add_text_layer("title", "Weather Station", x=10, y=10, font_size=2, background=True)
 
 # Add background image with dithering
 composer.add_image_layer("photo", "background.jpg", resize_mode="fit", dither_mode="floyd-steinberg")
 
-# Add QR code image
-composer.add_image_layer("qr", "qrcode.png", x=80, y=180, resize_mode="fit")
+# Add QR code image with custom size
+composer.add_image_layer("qr", "qrcode.png", x=80, y=180, width=50, height=50)
 
 # Add rotated image with custom crop position
 composer.add_image_layer("banner", "banner.jpg", resize_mode="crop", rotate=90, crop_x=100, crop_y=0)
@@ -140,13 +140,13 @@ except ImportError:
 eink-compose create --size 128x250
 
 # Add layers
-eink-compose add-image background background.jpg --mode fit
-eink-compose add-text title "Weather Station" --x 10 --y 10
-eink-compose add-image qr qrcode.png --x 180 --y 50 --mode crop
+eink-compose add-image background background.jpg --resize-mode fit
+eink-compose add-text title "Weather Station" --x 10 --y 10 --font-size 2 --background
+eink-compose add-image qr qrcode.png --x 80 --y 50 --width 50 --height 50
 eink-compose add-rect border --width 128 --height 250 --filled false
 
 # Add image with rotation and custom crop
-eink-compose add-image photo photo.jpg --mode crop --rotate 90 --crop-x 50 --crop-y 100
+eink-compose add-image photo photo.jpg --resize-mode crop --rotate 90 --crop-x 50 --crop-y 100
 
 # List layers
 eink-compose list
@@ -243,7 +243,49 @@ The showcase includes:
 
 ## Advanced Features
 
+### Text Styling Options
+
+- **Font scaling**: `font_size` parameter scales the 6x8 bitmap font
+  - `font_size=1`: Normal 6x8 pixels per character
+  - `font_size=2`: Double size 12x16 pixels per character
+  - `font_size=3`: Triple size 18x24 pixels per character
+
+- **Text transformations**:
+  - `rotate`: Rotation in degrees (supports any value, including negatives)
+  - `flip_h`: Horizontal flip (useful for mirrored displays)
+  - `flip_v`: Vertical flip
+
+- **Text background**:
+  - `background=True`: Adds white background behind text
+  - `padding`: Controls spacing around background (default: 2 pixels)
+
+```python
+# Text examples
+composer.add_text_layer("title", "Big Title", font_size=3, background=True, padding=5)
+composer.add_text_layer("rotated", "Rotated Text", rotate=90, flip_h=True)
+```
+
+```bash
+# CLI text examples
+eink-compose add-text title "Big Title" --font-size 3 --background --padding 5
+eink-compose add-text rotated "Rotated Text" --rotate 90 --flip-h
+```
+
 ### Image Processing Options
+
+- **Custom dimensions**: Specify exact width and height for images
+  - `width`: Custom width in pixels (overrides resize calculation)
+  - `height`: Custom height in pixels (overrides resize calculation)
+
+```python
+# Fixed size image (great for QR codes)
+composer.add_image_layer("qr", "qrcode.png", x=10, y=10, width=50, height=50)
+```
+
+```bash
+# CLI custom size
+eink-compose add-image qr qrcode.png --x 10 --y 10 --width 50 --height 50
+```
 
 - **Resize modes**: 
   - `stretch`: Resize to exact dimensions (may distort)
@@ -323,9 +365,9 @@ composer.add_image_layer("photo", "image.jpg",
                         crop_y=50)       # 50 pixels from top
 
 # CLI examples
-eink-compose add-image photo1 image.jpg --mode crop --rotate 90
-eink-compose add-image photo2 image.jpg --mode crop --rotate 90 --crop-x 0 --crop-y 0
-eink-compose add-image photo3 image.jpg --mode crop --flip-h --rotate 180
+eink-compose add-image photo1 image.jpg --resize-mode crop --rotate 90
+eink-compose add-image photo2 image.jpg --resize-mode crop --rotate 90 --crop-x 0 --crop-y 0
+eink-compose add-image photo3 image.jpg --resize-mode crop --flip-h --rotate 180
 ```
 
 ### Dashboard Display
@@ -333,7 +375,7 @@ eink-compose add-image photo3 image.jpg --mode crop --flip-h --rotate 180
 composer = EinkComposer(250, 128)
 composer.add_text_layer("date", "2024-01-15", x=5, y=5)
 composer.add_text_layer("time", "14:30", x=5, y=20)
-composer.add_image_layer("icon", "weather-icon.png", x=200, y=5, mode="fit")
+composer.add_image_layer("icon", "weather-icon.png", x=200, y=5, resize_mode="fit")
 composer.add_text_layer("temp", "22C", x=5, y=50)
 composer.save("dashboard.png")
 ```
@@ -342,7 +384,7 @@ composer.save("dashboard.png")
 ```python
 composer = EinkComposer(200, 200)
 composer.add_rectangle_layer("bg", width=200, height=200, filled=True, color=255)
-composer.add_image_layer("qr", "contact-qr.png", x=50, y=20, mode="fit")
+composer.add_image_layer("qr", "contact-qr.png", x=50, y=20, width=100, height=100)
 composer.add_text_layer("name", "John Doe", x=60, y=150)
 composer.add_text_layer("title", "Engineer", x=65, y=165)
 composer.save("badge.png")

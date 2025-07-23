@@ -62,7 +62,7 @@ FONT_HEIGHT = 8
 
 def render_text(text: str, x: int = 0, y: int = 0, 
                 canvas: Optional[np.ndarray] = None,
-                color: int = 0) -> np.ndarray:
+                color: int = 0, font_size: int = 1) -> np.ndarray:
     """
     Render text using bitmap font.
     
@@ -72,14 +72,19 @@ def render_text(text: str, x: int = 0, y: int = 0,
         y: Y position  
         canvas: Optional canvas to draw on. If None, creates new canvas
         color: Text color (0=black, 255=white)
+        font_size: Font scale factor (1=normal, 2=double, etc.)
         
     Returns:
         Canvas with rendered text
     """
+    # Calculate scaled dimensions
+    scaled_font_width = FONT_WIDTH * font_size
+    scaled_font_height = FONT_HEIGHT * font_size
+    
     if canvas is None:
         # Calculate required canvas size
-        width = len(text) * FONT_WIDTH
-        height = FONT_HEIGHT
+        width = len(text) * scaled_font_width
+        height = scaled_font_height
         canvas = np.full((height, width), 255 if color == 0 else 0, dtype=np.uint8)
         x = 0
         y = 0
@@ -91,41 +96,48 @@ def render_text(text: str, x: int = 0, y: int = 0,
             char = ' '  # Default to space for unknown characters
             
         char_data = FONT_6X8[char]
-        char_x = x + i * FONT_WIDTH
+        char_x = x + i * scaled_font_width
         
         # Skip if character is outside canvas
         if char_x >= canvas_w or y >= canvas_h:
             continue
             
-        # Render character
+        # Render character with scaling
         for row in range(FONT_HEIGHT):
-            if y + row >= canvas_h:
+            if y + row * font_size >= canvas_h:
                 break
                 
             byte = char_data[row] if row < len(char_data) else 0
             
             for col in range(FONT_WIDTH):
-                if char_x + col >= canvas_w:
+                if char_x + col * font_size >= canvas_w:
                     break
                     
                 # Check if bit is set
                 if byte & (0x80 >> col):
-                    canvas[y + row, char_x + col] = color
+                    # Draw scaled pixel block
+                    for dy in range(font_size):
+                        for dx in range(font_size):
+                            pixel_y = y + row * font_size + dy
+                            pixel_x = char_x + col * font_size + dx
+                            if pixel_y < canvas_h and pixel_x < canvas_w:
+                                canvas[pixel_y, pixel_x] = color
     
     return canvas
 
 
-def measure_text(text: str) -> Tuple[int, int]:
+def measure_text(text: str, font_size: int = 1) -> Tuple[int, int]:
     """
     Measure the dimensions of rendered text.
     
     Args:
         text: Text to measure
+        font_size: Font scale factor
         
     Returns:
         (width, height) tuple
     """
-    return (len(text) * FONT_WIDTH, FONT_HEIGHT)
+    return (len(text) * FONT_WIDTH * font_size, FONT_HEIGHT * font_size)
 
 
 def wrap_text(text: str, max_width: int) -> List[str]:
