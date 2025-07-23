@@ -37,6 +37,41 @@ pip install -e .
 
 ## Quick Start
 
+### CLI Commands
+
+The CLI provides a session-based interface for creating e-ink compositions:
+
+```bash
+# Basic image display
+python -m eink_composer.cli create --size 240x416
+python -m eink_composer.cli add-image bg ./image.jpg
+python -m eink_composer.cli display
+
+# Complete example with multiple layers
+python -m eink_composer.cli create --size 240x416
+python -m eink_composer.cli add-image bg ./background.jpg --resize-mode crop --rotate -90
+python -m eink_composer.cli add-image qr ./qrcode.png --x 55 --y 180 --width 70 --height 70
+python -m eink_composer.cli add-text ip "192.168.0.48" --x 0 --y 175 --background --padding 3 --rotate -90 --flip-h --font-size 1
+python -m eink_composer.cli display
+
+# Text and shapes
+python -m eink_composer.cli create --size 240x416
+python -m eink_composer.cli add-rect bg --width 240 --height 416 --filled --color 255
+python -m eink_composer.cli add-text title "E-INK DISPLAY" --x 60 --y 200 --font-size 2
+python -m eink_composer.cli add-rect border --width 240 --height 416
+python -m eink_composer.cli display
+
+# Layer management
+python -m eink_composer.cli list                    # List all layers
+python -m eink_composer.cli toggle text1            # Toggle layer visibility
+python -m eink_composer.cli remove old_layer       # Remove a layer
+
+# Save and load sessions
+python -m eink_composer.cli save composition.json   # Save current composition
+python -m eink_composer.cli load composition.json   # Load saved composition
+python -m eink_composer.cli render output.png       # Render to file
+```
+
 ### Python One-Liners
 
 Quick examples for common tasks:
