@@ -59,6 +59,10 @@ Examples:
   eink-compose load my_template.json
   eink-compose load my_template.json --render --output final.png
   
+  # Session management
+  eink-compose reset                   # Clear session, create new 128x250
+  eink-compose reset --size 240x416    # Clear session, create custom size
+  
   # Hardware control
   eink-compose hardware info   # Show display info
   eink-compose hardware clear  # Clear display
@@ -136,6 +140,10 @@ Examples:
     toggle_cmd = subparsers.add_parser('toggle', help='Toggle layer visibility')
     toggle_cmd.add_argument('layer_id', help='Layer ID to toggle')
     
+    # Reset session command
+    reset_cmd = subparsers.add_parser('reset', help='Reset/clear the current session')
+    reset_cmd.add_argument('--size', default='128x250', help='Display size for new session (default: 128x250)')
+    
     # List layers command
     list_cmd = subparsers.add_parser('list', help='List all layers')
     
@@ -196,6 +204,14 @@ class ComposerSession:
         self.composer = None
         self.session_file = Path.home() / '.eink_composer_session.json'
         self.load_session()
+    
+    def ensure_composer(self, default_width=128, default_height=250):
+        """Ensure a composer exists, creating a default one if needed."""
+        if not self.composer:
+            print(f"No active composition found. Creating default {default_width}x{default_height} composition...")
+            self.composer = EinkComposer(default_width, default_height)
+            self.save_session()
+            print(f"✓ Created default {default_width}x{default_height} composition")
     
     def load_session(self):
         """Load session from file."""
@@ -303,9 +319,7 @@ def main():
             print(f"Saved to {args.output}")
     
     elif args.command == 'add-image':
-        if not session.composer:
-            print("Error: No active composition. Use 'create' first.", file=sys.stderr)
-            sys.exit(1)
+        session.ensure_composer()
         
         session.composer.add_image_layer(
             layer_id=args.layer_id,
@@ -327,9 +341,7 @@ def main():
         print(f"Added image layer '{args.layer_id}'")
     
     elif args.command == 'add-text':
-        if not session.composer:
-            print("Error: No active composition. Use 'create' first.", file=sys.stderr)
-            sys.exit(1)
+        session.ensure_composer()
         
         session.composer.add_text_layer(
             layer_id=args.layer_id,
@@ -347,9 +359,7 @@ def main():
         print(f"Added text layer '{args.layer_id}'")
     
     elif args.command == 'add-rect':
-        if not session.composer:
-            print("Error: No active composition. Use 'create' first.", file=sys.stderr)
-            sys.exit(1)
+        session.ensure_composer()
         
         session.composer.add_rectangle_layer(
             layer_id=args.layer_id,
@@ -362,27 +372,40 @@ def main():
         print(f"Added rectangle layer '{args.layer_id}'")
     
     elif args.command == 'remove':
-        if not session.composer:
-            print("Error: No active composition. Use 'create' first.", file=sys.stderr)
-            sys.exit(1)
+        session.ensure_composer()
         
         session.composer.remove_layer(args.layer_id)
         session.save_session()
         print(f"Removed layer '{args.layer_id}'")
     
     elif args.command == 'toggle':
-        if not session.composer:
-            print("Error: No active composition. Use 'create' first.", file=sys.stderr)
-            sys.exit(1)
+        session.ensure_composer()
         
         session.composer.toggle_layer(args.layer_id)
         session.save_session()
         print(f"Toggled visibility of layer '{args.layer_id}'")
     
-    elif args.command == 'list':
-        if not session.composer:
-            print("Error: No active composition. Use 'create' first.", file=sys.stderr)
+    elif args.command == 'reset':
+        # Parse size
+        try:
+            width, height = map(int, args.size.split('x'))
+        except ValueError:
+            print(f"Error: Invalid size format '{args.size}'. Use WIDTHxHEIGHT", file=sys.stderr)
             sys.exit(1)
+        
+        # Delete existing session file if it exists
+        if session.session_file.exists():
+            session.session_file.unlink()
+            print("✓ Cleared existing session")
+        
+        # Create new session
+        session.composer = EinkComposer(width, height)
+        session.save_session()
+        print(f"✓ Created new {width}x{height} composition")
+        print("Session reset complete")
+    
+    elif args.command == 'list':
+        session.ensure_composer()
         
         layers = session.composer.get_layer_info()
         if not layers:
@@ -402,9 +425,7 @@ def main():
                     print(f"      Size: {layer['width']}x{layer['height']}")
     
     elif args.command == 'render':
-        if not session.composer:
-            print("Error: No active composition. Use 'create' first.", file=sys.stderr)
-            sys.exit(1)
+        session.ensure_composer()
         
         render_kwargs = {
             'background_color': args.bg_color,
@@ -416,9 +437,7 @@ def main():
         print(f"Rendered to {args.output}")
     
     elif args.command == 'save':
-        if not session.composer:
-            print("Error: No active composition. Use 'create' first.", file=sys.stderr)
-            sys.exit(1)
+        session.ensure_composer()
         
         data = {
             'width': session.composer.width,
@@ -459,9 +478,7 @@ def main():
             print("Run: source /opt/distiller-cm5-sdk/activate.sh", file=sys.stderr)
             sys.exit(1)
         
-        if not session.composer:
-            print("Error: No active composition. Use 'create' first.", file=sys.stderr)
-            sys.exit(1)
+        session.ensure_composer()
         
         try:
             # Initialize display
