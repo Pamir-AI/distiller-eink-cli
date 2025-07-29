@@ -39,7 +39,7 @@ ENV/
 Thumbs.db
 
 # Test artifacts
-*.png
+
 *.jpg
 *.bin
 test_*.py
