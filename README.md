@@ -10,6 +10,7 @@ A Python library and CLI tool for creating layered image compositions optimized 
 - **Built-in text rendering**: Scalable 6x8 bitmap font with rotation, flipping, and background options
 - **Multiple output formats**: PNG, BMP, and binary (packed bits)
 - **CLI and Python API**: Use as command-line tool or Python library
+- **Template system**: Dynamic content rendering with templates (IP addresses, QR codes)
 - **Hardware integration**: Direct display on Distiller CM5 e-ink hardware
 
 ## Installation
@@ -163,6 +164,118 @@ eink-compose display --rotate --flip-h  # With transformations
 # Save/load compositions
 eink-compose save weather-template.json
 eink-compose load weather-template.json --render --output final.png
+```
+
+## Template System
+
+The template system allows you to create reusable layouts with dynamic content placeholders. Perfect for services that need to display changing data like IP addresses and QR codes.
+
+### Template Usage
+
+```python
+from eink_composer import TemplateRenderer
+
+# Create renderer with template file
+renderer = TemplateRenderer("/path/to/template.json")
+
+# Render with dynamic data
+composer = renderer.render(
+    ip_address="192.168.1.100",
+    tunnel_url="https://abc.ngrok.io"
+)
+
+# Save or display
+composer.save("output.png")
+
+# Or display directly on hardware
+renderer.render_and_display("192.168.1.100", "https://abc.ngrok.io")
+```
+
+### Template Format
+
+Templates are JSON files that define layers with optional placeholders:
+
+```json
+{
+  "template_version": "1.0",
+  "width": 128,
+  "height": 250,
+  "layers": [
+    {
+      "id": "background",
+      "type": "image",
+      "image_path": "./background.png",
+      "x": 0,
+      "y": 0,
+      "resize_mode": "crop",
+      "rotate": -90,
+      "visible": true
+    },
+    {
+      "id": "ip_display",
+      "placeholder_type": "ip",
+      "x": 10,
+      "y": 10,
+      "font_size": 2,
+      "background": true,
+      "padding": 3,
+      "visible": true
+    },
+    {
+      "id": "qr_code",
+      "placeholder_type": "qr",
+      "x": 50,
+      "y": 150,
+      "width": 70,
+      "height": 70,
+      "error_correction": "M",
+      "visible": true
+    }
+  ]
+}
+```
+
+### Placeholder Types
+
+- **`ip`**: Displays dynamic IP address text
+  - Uses all text layer properties (font_size, background, rotate, etc.)
+
+- **`qr`**: Generates QR code with dynamic URL
+  - Properties: `width`, `height`, `error_correction` (L/M/Q/H)
+
+### Service Integration
+
+Template system is designed for system services:
+
+```python
+# In a system service
+import sys
+sys.path.insert(0, '/home/distiller/projects/vibe-code-eink-ui')
+from eink_composer import TemplateRenderer
+
+def update_display(ip_address, tunnel_url):
+    try:
+        renderer = TemplateRenderer("/opt/service/template.json")
+        renderer.render_and_display(ip_address, tunnel_url)
+        return True
+    except Exception as e:
+        # Fallback to other methods
+        return False
+```
+
+### Creating Templates
+
+You can create templates using the web UI or by composing with the CLI and exporting:
+
+```bash
+# Create composition with CLI
+eink-compose create --size 128x250
+eink-compose add-image bg background.png --resize-mode crop --rotate -90
+eink-compose add-text ip "{{IP_PLACEHOLDER}}" --x 10 --y 175 --background
+eink-compose add-image qr placeholder_qr.png --x 55 --y 180 --width 70 --height 70
+
+# Export as template (manual conversion to JSON needed)
+eink-compose save template_base.json
 ```
 
 ## Complete Example
