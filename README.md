@@ -265,7 +265,59 @@ def update_display(ip_address, tunnel_url):
 
 ### Creating Templates
 
-You can create templates using the web UI or by composing with the CLI and exporting:
+#### Web UI Template Package System (Recommended)
+
+The easiest way to create professional templates is using the web UI:
+
+```bash
+# Start the web UI
+cd /home/distiller/projects/vibe-code-eink-ui
+python web_app.py
+# Or for production: python run_web.py
+
+# Open in browser: http://localhost:5000
+```
+
+**Web UI Features:**
+- **Visual Template Editor**: Drag and drop layers, real-time preview
+- **Complete Template Packages**: Saves template + all background images
+- **Upload Support**: Upload images from your laptop/Mac directly
+- **Template Library**: Save, load, and manage multiple templates
+- **Dynamic Placeholders**: IP and QR code support built-in
+
+**Creating a Template Package:**
+1. Add layers (text, images, QR codes) using the visual editor
+2. Upload background images from your computer (Mac/PC)
+3. Click "💾 Save Template" and enter a name
+4. Template package created in `/templates/<name>/` with:
+   - `template.json` (with relative image paths)
+   - `image_file.png` (your uploaded images)
+   - Complete, portable package
+
+**Using Template Packages:**
+```python
+# Use template package in services
+from eink_composer.template_renderer import TemplateRenderer
+
+# Load template package (includes all images)
+renderer = TemplateRenderer("/path/to/template_package/template.json")
+
+# Render with dynamic data
+renderer.render_and_display(
+    ip_address="192.168.1.100",
+    tunnel_url="https://tunnel.example.com"
+)
+```
+
+**Template Package Benefits:**
+- ✅ **Completely portable** - copy folder anywhere and it works
+- ✅ **No broken image paths** - all assets included
+- ✅ **Professional workflow** - perfect for services integration
+- ✅ **Cross-platform** - create on Mac, deploy on Linux
+
+#### CLI Template Creation
+
+You can also create templates using the CLI (requires manual JSON editing):
 
 ```bash
 # Create composition with CLI
@@ -536,6 +588,31 @@ eink-compose create --size 128x250
 eink-compose add-text test "TEST" --x 50 --y 120
 eink-compose display
 ```
+
+## Service Integration
+
+### Using Templates with Tunnel Services
+
+Template packages can be directly integrated into system services like `pinggy_tunnel_service.py`:
+
+```python
+# Service automatically uses template package
+template_path = "/home/distiller/projects/vibe-code-eink-ui/templates/my_template/template.json"
+
+from eink_composer.template_renderer import TemplateRenderer
+renderer = TemplateRenderer(template_path)
+renderer.render_and_display(current_ip, tunnel_url)
+```
+
+**Template Requirements for Service Integration:**
+- IP placeholder layers must have `"placeholder_type": "ip"`
+- QR placeholder layers must have `"placeholder_type": "qr"`  
+- Template package must include all image files with relative paths
+
+**Error Handling:**
+- Hardware errors are exposed (no silent fallbacks)
+- Template missing = service fails with clear error
+- Invalid template format = detailed error message
 
 ## License
 

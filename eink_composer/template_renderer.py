@@ -177,9 +177,16 @@ class TemplateRenderer:
                 color=layer_data.get('color', 0)
             )
         elif layer_type == 'image' and layer_data.get('image_path'):
+            # Resolve relative paths
+            image_path = layer_data['image_path']
+            if image_path.startswith('./'):
+                # Convert relative path to absolute path
+                template_dir = os.path.dirname(self.template_path)
+                image_path = os.path.join(template_dir, image_path[2:])
+            
             composer.add_image_layer(
                 layer_id=layer_data['id'],
-                image_path=layer_data['image_path'],
+                image_path=image_path,
                 x=layer_data.get('x', 0),
                 y=layer_data.get('y', 0),
                 resize_mode=layer_data.get('resize_mode', 'fit'),
@@ -233,6 +240,9 @@ class TemplateRenderer:
         Returns:
             True if successful
         """
+        temp_path = None
+        composer = None
+        
         try:
             from distiller_cm5_sdk.hardware.eink import Display, DisplayMode
             
@@ -242,21 +252,46 @@ class TemplateRenderer:
             with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as temp_file:
                 temp_path = temp_file.name
                 
-            composer.save(temp_path, format='png')
+            # Use EXACT same logic as working web UI
+            import numpy as np
+            from PIL import Image
             
-            # Display on hardware
-            display = Display()
-            display.display_image(temp_path, mode=DisplayMode.FULL)
+            # Get the image and transform it for hardware orientation (same as web UI)
+            img_array = composer.render()  # Get numpy array
             
-            # Clean up
-            os.remove(temp_path)
-            self._cleanup_temp_files(composer)
+            # Apply flip vertical (same as web UI)
+            img_array = np.flipud(img_array)  # Flip up-down
+            
+            # Rotate 90° counterclockwise (same as web UI)
+            rotated_array = np.rot90(img_array, k=1)  # k=1 means 90° counterclockwise
+            
+            # Save rotated image (same as web UI)
+            pil_img = Image.fromarray(rotated_array, mode='L')
+            pil_img.save(temp_path)
+            
+            # Display on hardware - match web UI method exactly
+            display = Display(auto_init=False)
+            display.initialize()
+            
+            # Convert PNG to raw data and display (same as web UI)
+            raw_data = display.convert_png_to_raw(temp_path)
+            display._display_raw(raw_data, DisplayMode.FULL)
             
             return True
+            
         except ImportError:
             raise Exception("E-ink hardware SDK not available")
         except Exception as e:
             raise Exception(f"Failed to display on hardware: {e}")
+        finally:
+            # Clean up resources
+            if temp_path and os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                except OSError:
+                    pass
+            if composer:
+                self._cleanup_temp_files(composer)
 
 
 def create_template_from_dict(template_dict: dict, output_path: str) -> str:
