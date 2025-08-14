@@ -191,9 +191,38 @@ class EinkComposer:
         """Update layer properties."""
         for layer in self.layers:
             if layer.id == layer_id:
+                # Check if this is a QR placeholder and if dimensions are changing
+                is_qr_placeholder = hasattr(layer, 'placeholder_type') and layer.placeholder_type == 'qr'
+                dimensions_changing = is_qr_placeholder and ('width' in kwargs or 'height' in kwargs)
+                
+                # Update properties
                 for key, value in kwargs.items():
                     if hasattr(layer, key):
                         setattr(layer, key, value)
+                
+                # Regenerate QR placeholder image if dimensions changed
+                if dimensions_changing:
+                    import numpy as np
+                    width = layer.width or 70  # Default width if None
+                    height = layer.height or 70  # Default height if None
+                    
+                    # Create a new placeholder pattern for preview
+                    placeholder_img = np.full((height, width), 255, dtype=np.uint8)  # White background
+                    # Add a simple border and "QR" text pattern
+                    placeholder_img[0:2, :] = 0  # Top border
+                    placeholder_img[-2:, :] = 0  # Bottom border 
+                    placeholder_img[:, 0:2] = 0  # Left border
+                    placeholder_img[:, -2:] = 0  # Right border
+                    
+                    # Add "QR" text in center (simplified)
+                    center_y, center_x = height // 2, width // 2
+                    if height > 10 and width > 20:  # Only if big enough
+                        placeholder_img[max(0, center_y-5):min(height, center_y+5), 
+                                      max(0, center_x-10):min(width, center_x+10)] = 0
+                    
+                    # Update the layer's image data
+                    layer.image_data = placeholder_img
+                
                 return True
         return False
     
@@ -204,6 +233,32 @@ class EinkComposer:
                 layer.visible = not layer.visible
                 return True
         return False
+    
+    def move_layer(self, layer_id: str, new_index: int) -> bool:
+        """Move a layer to a new position in the layer stack."""
+        # Find the layer
+        layer_to_move = None
+        old_index = -1
+        
+        for i, layer in enumerate(self.layers):
+            if layer.id == layer_id:
+                layer_to_move = layer
+                old_index = i
+                break
+        
+        if layer_to_move is None or old_index == -1:
+            return False
+            
+        # Clamp new_index to valid range
+        new_index = max(0, min(new_index, len(self.layers) - 1))
+        
+        # Remove from old position
+        self.layers.pop(old_index)
+        
+        # Insert at new position
+        self.layers.insert(new_index, layer_to_move)
+        
+        return True
     
     def _render_image_layer(self, layer: ImageLayer):
         """Render an image layer to canvas."""
@@ -462,6 +517,11 @@ class EinkComposer:
                     'width': layer.width,
                     'height': layer.height
                 })
+                # Include placeholder_type if it exists (for QR codes, etc.)
+                if hasattr(layer, 'placeholder_type'):
+                    layer_info['placeholder_type'] = layer.placeholder_type
+                if hasattr(layer, 'error_correction'):
+                    layer_info['error_correction'] = layer.error_correction
             elif isinstance(layer, TextLayer):
                 layer_info.update({
                     'text': layer.text,

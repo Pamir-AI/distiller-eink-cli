@@ -10,7 +10,7 @@ from .composer import EinkComposer
 
 # Try to import hardware display support
 try:
-    sys.path.insert(0, '/opt/distiller-cm5-sdk')
+    sys.path.insert(0, '/opt/distiller-cm5-sdk/src')
     from distiller_cm5_sdk.hardware.eink import Display, DisplayMode, ScalingMethod, DitheringMethod
     HARDWARE_AVAILABLE = True
 except ImportError:
