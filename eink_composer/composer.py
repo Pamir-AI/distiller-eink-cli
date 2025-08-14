@@ -533,6 +533,9 @@ class EinkComposer:
                     'background': layer.background,
                     'padding': layer.padding
                 })
+                # Include placeholder_type if it exists (for IP placeholders, etc.)
+                if hasattr(layer, 'placeholder_type'):
+                    layer_info['placeholder_type'] = layer.placeholder_type
             elif isinstance(layer, RectangleLayer):
                 layer_info.update({
                     'width': layer.width,
