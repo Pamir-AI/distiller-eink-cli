@@ -292,6 +292,7 @@ class TemplateRenderer:
                     pass
             if composer:
                 self._cleanup_temp_files(composer)
+            display.close()
 
 
 def create_template_from_dict(template_dict: dict, output_path: str) -> str:
